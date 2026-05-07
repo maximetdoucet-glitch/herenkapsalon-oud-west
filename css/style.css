@@ -244,7 +244,7 @@ a:hover { color: var(--gold); }
   pointer-events: auto;
 }
 .nav__brand-mark {
-  width: 30px;
+  width: 48px;
   height: auto;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
   transition: transform .35s cubic-bezier(.4, 0, .2, 1);
@@ -1052,7 +1052,7 @@ a:hover { color: var(--gold); }
   margin-bottom: 1.5rem;
 }
 .footer__brand-mark {
-  width: 56px;
+  width: 88px;
   height: auto;
   filter: drop-shadow(0 4px 14px rgba(0,0,0,0.55));
   flex-shrink: 0;
