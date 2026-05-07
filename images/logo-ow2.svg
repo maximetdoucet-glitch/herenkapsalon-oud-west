@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" width="400" height="260">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" width="480" height="320">
   <defs>
     <linearGradient id="goldOW" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#e6c14a"/>
@@ -8,13 +8,12 @@
   </defs>
   <g font-family="Barlow Condensed, Inter Tight, sans-serif"
      font-weight="900"
-     font-size="220"
+     font-size="200"
      letter-spacing="-4"
      fill="url(#goldOW)"
      stroke="#3b2c0a"
-     stroke-width="1.5"
-     dominant-baseline="central">
-    <text x="120" y="130" text-anchor="middle">O</text>
-    <text x="260" y="130" text-anchor="middle">W</text>
+     stroke-width="1.5">
+    <text x="150" y="225" text-anchor="middle">O</text>
+    <text x="310" y="225" text-anchor="middle">W</text>
   </g>
 </svg>
