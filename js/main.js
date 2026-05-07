@@ -343,70 +343,87 @@
       }
     }
 
-    /* Step 3: times — fetched live from Cal.com via /api/slots */
+    // Mock mode: skip Cal.com and synthesise slots from SHOP_HOURS so the demo
+    // booking flow is fully walkable end-to-end. Set MOCK_BOOKING=false once the
+    // shop has a real Cal.com event-type set up + CALCOM_API_KEY in Vercel.
+    const MOCK_BOOKING = true;
+
+    /* Step 3: times — Cal.com when wired, otherwise synthetic slots. */
     async function buildTimes() {
       timesEl.innerHTML = '<p class="book__hint">Beschikbaarheid laden…</p>';
       if (!state.date || !state.service) return;
 
-      let et;
-      try {
-        await fetchEventTypes();
-        et = eventTypeForService(state.service);
-      } catch (err) {
-        timesEl.innerHTML = '<p class="book__hint">Kon beschikbaarheid niet laden. Probeer het opnieuw.</p>';
-        return;
-      }
-
-      if (!et) {
-        timesEl.innerHTML = `<p class="book__hint">Geen Cal.com event type gevonden voor "${SERVICE_SLUG[state.service]}". Maak deze aan in Cal.com.</p>`;
-        return;
-      }
-
-      const dKey = dateKey(state.date);
-
-      // Query the entire selected day in local TZ — always fresh, no cache.
-      const dayStart = new Date(state.date); dayStart.setHours(0, 0, 0, 0);
-      const dayEnd   = new Date(state.date); dayEnd.setHours(23, 59, 59, 999);
-
-      const params = new URLSearchParams({
-        eventTypeId: String(et.id),
-        startTime: dayStart.toISOString(),
-        endTime: dayEnd.toISOString(),
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Amsterdam'
-      });
-
-      let slots;
-      try {
-        const r = await fetch('/api/slots?' + params.toString(), { cache: 'no-store' });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.message || data.error || 'slots failed');
-
-        const dayList = (data.slots && data.slots[dKey]) || [];
-        slots = dayList.map(s => {
-          const iso = s.time;
-          const dt = new Date(iso);
-          const label = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-          return { label, iso };
-        });
-      } catch (err) {
-        console.error('[booking] slots fetch failed', err);
-        timesEl.innerHTML = '<p class="book__hint">Kon beschikbaarheid niet laden. Controleer dat de Cal.com API key is ingesteld in <code>.env</code>.</p>';
-        return;
-      }
-
-      // Build the full day grid based on shop hours + event-type length,
-      // then mark each slot as available (in Cal.com's list) or taken (disabled).
       const dow = state.date.getDay();
       const range = SHOP_HOURS[dow];
-      timesEl.innerHTML = '';
       if (!range) {
         timesEl.innerHTML = '<p class="book__hint">Gesloten op deze dag — kies een andere datum.</p>';
         return;
       }
-
       const inc = state.duration || 30;
       const [openH, closeH] = range;
-      const availableByLabel = new Map(slots.map(s => [s.label, s.iso]));
+
+      let availableByLabel;
+
+      if (MOCK_BOOKING) {
+        // Deterministic "taken" set per date so the page looks realistic but stable.
+        availableByLabel = new Map();
+        const seed = state.date.getDate() + state.date.getMonth() * 31;
+        let i = 0;
+        for (let m = openH * 60; m + inc <= closeH * 60; m += inc) {
+          const h = Math.floor(m / 60);
+          const mm = m % 60;
+          const label = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+          // Roughly 1 in 4 slots taken, varied by date so it doesn't look fake.
+          const taken = ((seed * 7 + i * 13) % 4) === 0;
+          if (!taken) {
+            const iso = new Date(state.date);
+            iso.setHours(h, mm, 0, 0);
+            availableByLabel.set(label, iso.toISOString());
+          }
+          i++;
+        }
+      } else {
+        let et;
+        try {
+          await fetchEventTypes();
+          et = eventTypeForService(state.service);
+        } catch (err) {
+          timesEl.innerHTML = '<p class="book__hint">Kon beschikbaarheid niet laden. Probeer het opnieuw.</p>';
+          return;
+        }
+        if (!et) {
+          timesEl.innerHTML = `<p class="book__hint">Geen Cal.com event type gevonden voor "${SERVICE_SLUG[state.service]}". Maak deze aan in Cal.com.</p>`;
+          return;
+        }
+
+        const dKey = dateKey(state.date);
+        const dayStart = new Date(state.date); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd   = new Date(state.date); dayEnd.setHours(23, 59, 59, 999);
+        const params = new URLSearchParams({
+          eventTypeId: String(et.id),
+          startTime: dayStart.toISOString(),
+          endTime: dayEnd.toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Amsterdam'
+        });
+
+        try {
+          const r = await fetch('/api/slots?' + params.toString(), { cache: 'no-store' });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.message || data.error || 'slots failed');
+          const dayList = (data.slots && data.slots[dKey]) || [];
+          availableByLabel = new Map(dayList.map(s => {
+            const dt = new Date(s.time);
+            const label = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+            return [label, s.time];
+          }));
+        } catch (err) {
+          console.error('[booking] slots fetch failed', err);
+          timesEl.innerHTML = '<p class="book__hint">Kon beschikbaarheid niet laden. Controleer dat de Cal.com API key is ingesteld in <code>.env</code>.</p>';
+          return;
+        }
+      }
+
+      timesEl.innerHTML = '';
 
       const now = new Date();
       const isToday = state.date.toDateString() === now.toDateString();
@@ -490,14 +507,30 @@
     });
 
     async function submitBooking() {
-      const et = eventTypeForService(state.service);
-      if (!et || !state.timeIso) {
+      if (!state.timeIso) {
         showError('Iets ging mis — kies opnieuw een tijdslot.');
         return;
       }
 
       btnNext.disabled = true;
       btnNext.firstChild.textContent = 'Bezig… ';
+
+      if (MOCK_BOOKING) {
+        // Simulate the network round-trip so the spinner feels real.
+        await new Promise(res => setTimeout(res, 700));
+        showConfirmation();
+        btnNext.disabled = false;
+        updateNextButton();
+        return;
+      }
+
+      const et = eventTypeForService(state.service);
+      if (!et) {
+        showError('Iets ging mis — kies opnieuw een tijdslot.');
+        btnNext.disabled = false;
+        updateNextButton();
+        return;
+      }
 
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Amsterdam';
       const payload = {
@@ -512,7 +545,7 @@
           ...(state.phone ? { phone: state.phone } : {})
         },
         metadata: {
-          source: 'barbershop080.nl',
+          source: 'kapsalon-oud-west.nl',
           barberPreference: state.barber
         }
       };
