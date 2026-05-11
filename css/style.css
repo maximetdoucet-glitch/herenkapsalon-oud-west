@@ -1943,3 +1943,90 @@ a:hover { color: var(--gold); }
   .reviews__aggregate { position: static; }
   .reviews__grid { grid-template-columns: 1fr; }
 }
+
+/* =========================================================
+   v3 mobile optimization
+   Goals: stable hero on iOS, touch targets ≥44×44, no
+   horizontal overflow from watermarks, tighter nav pill,
+   readable type on phones, themed tap highlight.
+   Desktop is untouched — every rule is gated by media query
+   except the viewport-unit upgrade (which only takes effect
+   on small viewports anyway via .hero rules elsewhere).
+   ========================================================= */
+
+/* Global: themed tap highlight + iOS Safari hero stability */
+a, button, [role="button"], .btn, .nav__burger {
+  -webkit-tap-highlight-color: rgba(193,154,50,0.18);
+}
+@supports (height: 100svh) {
+  .hero { min-height: 100svh; }
+}
+
+@media (max-width: 760px) {
+  /* Hide watermarks on phones — decorative only and overflow horizontally */
+  .watermark { display: none; }
+
+  /* Body slightly tighter line-height on phones */
+  body { font-size: 15.5px; }
+
+  /* Touch targets — Fitts floor 44×44 for tap surfaces */
+  .nav__burger { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .nav__mobile-close { min-width: 44px; min-height: 44px; }
+  .gallery__btn { min-width: 44px; min-height: 44px; }
+  .book__close { min-width: 44px; min-height: 44px; }
+  .footer__col a { display: inline-block; padding: .35rem 0; }
+  .footer__social { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* Nav pill tighten so brand + burger never collide */
+  .nav__brand-line { font-size: .74rem; letter-spacing: .2em; }
+  .nav__brand-line--accent { font-size: .56rem; letter-spacing: .3em; }
+  .nav__brand-mark { width: 26px; }
+  .nav__brand-rule { height: 22px; }
+
+  /* Hero CTA: tap-friendly, no awkward wrap */
+  .hero__content .btn--large { padding: 1rem 2.25rem; font-size: 1rem; white-space: nowrap; }
+
+  /* Image break: shallower on phones (don't dominate scroll) */
+  .image-break { height: clamp(180px, 32vh, 240px); }
+
+  /* Visit map: better mobile aspect ratio */
+  .visit__map-frame-wrap { height: clamp(220px, 55vw, 320px); }
+
+  /* Services note: centered + breathing room */
+  .services__note { text-align: center; padding: 0 .5rem; line-height: 1.55; }
+
+  /* Footer brand: tidier vertical rhythm */
+  .footer__brand-row { gap: .75rem; }
+  .footer__brand-mark { width: 56px; height: 56px; }
+  .footer__bottom { font-size: .78rem; line-height: 1.5; }
+  .footer__legal { margin-top: .35rem; }
+
+  /* Gallery rail: tighter so a tile shows fully on small phones */
+  .gallery__item { flex-basis: 78vw; }
+  .gallery__item--tall { flex-basis: 62vw; }
+
+  /* Reveal motion: shorter distance on phones (less work, smoother) */
+  .reveal { transform: translateY(16px); }
+}
+
+/* Very small phones — extra tightening */
+@media (max-width: 420px) {
+  .container { padding: 0 1rem; }
+  .hero__content { padding: 0 1.25rem; }
+  .hero__title-main { font-size: clamp(1.85rem, 10vw, 2.5rem); }
+  .display { font-size: clamp(2rem, 9vw, 2.6rem); }
+  .display--sm { font-size: clamp(1.55rem, 7vw, 2rem); }
+  .eyebrow { font-size: .76rem; letter-spacing: .22em; margin-bottom: 1rem; }
+  .lead { font-size: 1.05rem; }
+
+  /* Booking modal: 2-col grids on tiny phones (was 3) */
+  .book__dates { grid-template-columns: repeat(2, 1fr); }
+  .book__times { grid-template-columns: repeat(2, 1fr); }
+  .book__date { padding: .85rem .25rem; min-height: 56px; }
+
+  /* CTA strip — never let title overflow */
+  .cta-strip { padding: 2.5rem 1rem; }
+  .cta-strip__title { font-size: clamp(1.75rem, 8vw, 2.4rem); }
+  .cta-strip__sub { font-size: .95rem; }
+}
+
